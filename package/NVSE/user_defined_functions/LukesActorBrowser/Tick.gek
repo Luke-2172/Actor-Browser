@@ -1,0 +1,351 @@
+string_var sPlugin
+string_var sForm
+string_var sName
+string_var sValue
+ref rBase
+ref rPlayer
+ref rPlayerBase
+ref rTarget
+ref rSpawn
+int iAction
+int iTarget
+int iAV
+int iCount
+int iType
+int iIndex
+int iSpawned
+int iApplied
+float fSession
+float fSerial
+float fValue
+float fBase
+float fCurrent
+begin Function {}
+    let rPlayer := GetFormFromMod "FalloutNV.esm" "000014"
+    if MenuMode
+        return
+    endif
+    if (GetINIFloat "Request:Pending" "LukesActorBrowserRuntime.ini") != 1
+        return
+    endif
+    SetINIFloat "Request:Pending" 0 "LukesActorBrowserRuntime.ini"
+    let fSession := GetINIFloat "Bridge:Session" "LukesActorBrowserRuntime.ini"
+    if fSession <= 0 || (GetINIFloat "Request:Session" "LukesActorBrowserRuntime.ini") != fSession
+        SetINIString "Request:Result" "Stale actor request rejected." "LukesActorBrowserRuntime.ini"
+        return
+    endif
+    let iAction := GetINIFloat "Request:Action" "LukesActorBrowserRuntime.ini"
+    if iAction == 0
+        let sPlugin := GetINIString "Request:Plugin" "LukesActorBrowserRuntime.ini"
+        let sForm := GetINIString "Request:Form" "LukesActorBrowserRuntime.ini"
+        let iCount := GetINIFloat "Request:Count" "LukesActorBrowserRuntime.ini"
+        let iSpawned := 0
+        if iCount >= 1 && iCount <= 5 && (IsModLoaded (sPlugin))
+            let rBase := GetFormFromMod (sPlugin) (sForm)
+            let rPlayerBase := rPlayer.GetBaseObject
+            if rBase && rBase != rPlayerBase
+                let iType := GetType rBase
+                if iType == 42 || iType == 43
+                    let iIndex := 0
+                    while iIndex < iCount
+                        let rSpawn := rPlayer.PlaceAtMe rBase 1
+                        if rSpawn
+                            rPlayer.AuxVarSetRef "*_LukesActorBrowserLast" rSpawn
+                            let iSpawned += 1
+                        endif
+                        let iIndex += 1
+                    loop
+                endif
+            endif
+        endif
+        let sValue := sv_Construct "Spawned %g actor(s) near the player." iSpawned
+        SetINIString "Request:Result" (sValue) "LukesActorBrowserRuntime.ini"
+        sv_Destruct sPlugin sForm sValue
+        return
+    endif
+    if iAction < 1 || iAction > 3
+        SetINIString "Request:Result" "Unknown actor request rejected." "LukesActorBrowserRuntime.ini"
+        return
+    endif
+    let iTarget := GetINIFloat "Request:Target" "LukesActorBrowserRuntime.ini"
+    let iAV := GetINIFloat "Request:AV" "LukesActorBrowserRuntime.ini"
+    let fSerial := GetINIFloat "Request:Serial" "LukesActorBrowserRuntime.ini"
+    let fValue := GetINIFloat "Request:Value" "LukesActorBrowserRuntime.ini"
+    if iAction == 2
+        if (GetINIFloat "Snapshot:Valid" "LukesActorBrowserRuntime.ini") != 1 || (GetINIFloat "Snapshot:Session" "LukesActorBrowserRuntime.ini") != fSession
+            SetINIString "Request:Result" "Read the actor again before applying a value." "LukesActorBrowserRuntime.ini"
+            return
+        endif
+        if (GetINIFloat "Snapshot:AV" "LukesActorBrowserRuntime.ini") != iAV || (GetINIFloat "Snapshot:Target" "LukesActorBrowserRuntime.ini") != iTarget
+            SetINIString "Request:Result" "Target selection changed. Read the actor again." "LukesActorBrowserRuntime.ini"
+            return
+        endif
+    endif
+    SetINIFloat "Snapshot:Valid" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Serial" fSerial "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Session" fSession "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:AV" iAV "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Target" iTarget "LukesActorBrowserRuntime.ini"
+    SetINIString "Snapshot:Name" "No valid actor selected" "LukesActorBrowserRuntime.ini"
+    SetINIString "Snapshot:Base" "--" "LukesActorBrowserRuntime.ini"
+    SetINIString "Snapshot:Current" "--" "LukesActorBrowserRuntime.ini"
+    let rTarget := 0
+    if iTarget == 0
+        let rTarget := rPlayer
+    elseif iTarget == 1
+        if iAction == 3
+            let rTarget := GetCrosshairRef
+            rPlayer.AuxVarSetRef "*_LukesActorBrowserTarget" rTarget
+        else
+            let rTarget := rPlayer.AuxVarGetRef "*_LukesActorBrowserTarget"
+        endif
+    elseif iTarget == 2
+        let rTarget := rPlayer.AuxVarGetRef "*_LukesActorBrowserLast"
+    endif
+    if (IsFormValid rTarget) == 0
+        SetINIString "Request:Result" "No valid target. Capture an actor or spawn one first." "LukesActorBrowserRuntime.ini"
+        return
+    endif
+    if (IsReference rTarget) == 0
+        return
+    endif
+    if (rTarget.IsActor) == 0 || iAV < 0 || iAV >= 30
+        SetINIString "Request:Result" "Target or actor value rejected." "LukesActorBrowserRuntime.ini"
+        return
+    endif
+    let iApplied := 0
+    if iAV == 0
+        if iAction == 2 && fValue >= 1 && fValue <= 100000
+            rTarget.SetActorValue Health fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Health
+        let fCurrent := rTarget.GetActorValue Health
+    elseif iAV == 1
+        if iAction == 2 && fValue >= 0 && fValue <= 10000
+            rTarget.SetActorValue ActionPoints fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue ActionPoints
+        let fCurrent := rTarget.GetActorValue ActionPoints
+    elseif iAV == 2
+        if iAction == 2 && fValue >= 0 && fValue <= 100000
+            rTarget.SetActorValue CarryWeight fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue CarryWeight
+        let fCurrent := rTarget.GetActorValue CarryWeight
+    elseif iAV == 3
+        if iAction == 2 && fValue >= 10 && fValue <= 500
+            rTarget.SetActorValue SpeedMult fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue SpeedMult
+        let fCurrent := rTarget.GetActorValue SpeedMult
+    elseif iAV == 4
+        if iAction == 2 && fValue >= 0 && fValue <= 1000
+            rTarget.SetActorValue DamageThreshold fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue DamageThreshold
+        let fCurrent := rTarget.GetActorValue DamageThreshold
+    elseif iAV == 5
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue DamageResist fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue DamageResist
+        let fCurrent := rTarget.GetActorValue DamageResist
+    elseif iAV == 6
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Strength fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Strength
+        let fCurrent := rTarget.GetActorValue Strength
+    elseif iAV == 7
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Perception fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Perception
+        let fCurrent := rTarget.GetActorValue Perception
+    elseif iAV == 8
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Endurance fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Endurance
+        let fCurrent := rTarget.GetActorValue Endurance
+    elseif iAV == 9
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Charisma fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Charisma
+        let fCurrent := rTarget.GetActorValue Charisma
+    elseif iAV == 10
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Intelligence fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Intelligence
+        let fCurrent := rTarget.GetActorValue Intelligence
+    elseif iAV == 11
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Agility fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Agility
+        let fCurrent := rTarget.GetActorValue Agility
+    elseif iAV == 12
+        if iAction == 2 && fValue >= 1 && fValue <= 10
+            rTarget.SetActorValue Luck fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Luck
+        let fCurrent := rTarget.GetActorValue Luck
+    elseif iAV == 13
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Barter fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Barter
+        let fCurrent := rTarget.GetActorValue Barter
+    elseif iAV == 14
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue EnergyWeapons fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue EnergyWeapons
+        let fCurrent := rTarget.GetActorValue EnergyWeapons
+    elseif iAV == 15
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Explosives fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Explosives
+        let fCurrent := rTarget.GetActorValue Explosives
+    elseif iAV == 16
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Guns fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Guns
+        let fCurrent := rTarget.GetActorValue Guns
+    elseif iAV == 17
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Lockpick fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Lockpick
+        let fCurrent := rTarget.GetActorValue Lockpick
+    elseif iAV == 18
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Medicine fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Medicine
+        let fCurrent := rTarget.GetActorValue Medicine
+    elseif iAV == 19
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue MeleeWeapons fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue MeleeWeapons
+        let fCurrent := rTarget.GetActorValue MeleeWeapons
+    elseif iAV == 20
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Repair fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Repair
+        let fCurrent := rTarget.GetActorValue Repair
+    elseif iAV == 21
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Science fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Science
+        let fCurrent := rTarget.GetActorValue Science
+    elseif iAV == 22
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Sneak fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Sneak
+        let fCurrent := rTarget.GetActorValue Sneak
+    elseif iAV == 23
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Speech fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Speech
+        let fCurrent := rTarget.GetActorValue Speech
+    elseif iAV == 24
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Survival fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Survival
+        let fCurrent := rTarget.GetActorValue Survival
+    elseif iAV == 25
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue Unarmed fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Unarmed
+        let fCurrent := rTarget.GetActorValue Unarmed
+    elseif iAV == 26
+        if iAction == 2 && fValue >= 0 && fValue <= 3
+            rTarget.SetActorValue Aggression fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Aggression
+        let fCurrent := rTarget.GetActorValue Aggression
+    elseif iAV == 27
+        if iAction == 2 && fValue >= 0 && fValue <= 4
+            rTarget.SetActorValue Confidence fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue Confidence
+        let fCurrent := rTarget.GetActorValue Confidence
+    elseif iAV == 28
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue RadResist fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue RadResist
+        let fCurrent := rTarget.GetActorValue RadResist
+    elseif iAV == 29
+        if iAction == 2 && fValue >= 0 && fValue <= 100
+            rTarget.SetActorValue PoisonResist fValue
+            let iApplied := 1
+        endif
+        let fBase := rTarget.GetBaseActorValue PoisonResist
+        let fCurrent := rTarget.GetActorValue PoisonResist
+    endif
+
+    let sName := sv_Construct "%n [%i]" rTarget rTarget
+    SetINIString "Snapshot:Name" (sName) "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Base" fBase "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Current" fCurrent "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Snapshot:Valid" 1 "LukesActorBrowserRuntime.ini"
+    if iAction == 2
+        if iApplied == 1
+            if eval (fBase - fValue) > -0.01 && (fBase - fValue) < 0.01
+                SetINIString "Request:Result" "Base value applied. Active modifiers may change the current value." "LukesActorBrowserRuntime.ini"
+            else
+                SetINIString "Request:Result" "Engine did not retain that base value. See the values returned above." "LukesActorBrowserRuntime.ini"
+            endif
+        else
+            SetINIString "Request:Result" "Value outside allowed range. No change made." "LukesActorBrowserRuntime.ini"
+        endif
+    else
+        SetINIString "Request:Result" "Target read. Enter a new base value, then click Apply." "LukesActorBrowserRuntime.ini"
+    endif
+    sv_Destruct sName
+end
+
+
+

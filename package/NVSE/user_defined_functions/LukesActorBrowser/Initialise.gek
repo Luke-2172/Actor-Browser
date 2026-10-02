@@ -1,0 +1,26 @@
+float fSession
+ref rPlayer
+begin Function {}
+    let rPlayer := GetFormFromMod "FalloutNV.esm" "000014"
+    rPlayer.AuxVarErase "*_LukesActorBrowserLast"
+    rPlayer.AuxVarErase "*_LukesActorBrowserTarget"
+    SetINIFloat "Snapshot:Valid" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Audio:Pickup" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Bridge:Ready" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Request:Pending" 0 "LukesActorBrowserRuntime.ini"
+    SetINIString "Request:Result" "Bridge ready." "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Diagnostic:Reported" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Diagnostic:Ticks" 0 "LukesActorBrowserRuntime.ini"
+    SetINIFloat "Bridge:Count" 0 "LukesActorBrowserRuntime.ini"
+    let fSession := GetINIFloat "Bridge:Session" "LukesActorBrowserRuntime.ini"
+    if fSession > 0
+        SetINIFloat "Bridge:Ready" fSession "LukesActorBrowserRuntime.ini"
+        Print "[Luke's Actor Browser] Actor request bridge ready."
+    else
+        Print "[Luke's Actor Browser] ERROR: native DLL has not published a session. Check nvse.log."
+    endif
+end
+
+
+
+

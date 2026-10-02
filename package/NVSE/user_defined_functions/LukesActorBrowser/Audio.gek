@@ -1,0 +1,20 @@
+ref rSound
+ref rItem
+int iEvent
+string_var sPlugin
+string_var sForm
+begin Function {}
+    let iEvent := GetINIFloat "Audio:Menu" "LukesActorBrowserRuntime.ini"
+    if iEvent > 0
+        SetINIFloat "Audio:Menu" 0 "LukesActorBrowserRuntime.ini"
+        let rSound := 0
+        if iEvent == 1
+            let rSound := GetFormFromMod "FalloutNV.esm" "015633"
+        elseif iEvent == 2
+            let rSound := GetFormFromMod "FalloutNV.esm" "015632"
+        endif
+        if rSound
+            PlaySound rSound 1
+        endif
+    endif
+end

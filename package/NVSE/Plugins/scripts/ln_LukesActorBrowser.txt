@@ -1,0 +1,50 @@
+; Luke's Actor Browser 1.0.8. Requires xNVSE 6.3.11+ and JIP LN 56.95+.
+; Keep this runner short: inline expressions have a 512-character limit.
+Print "[Luke's Actor Browser] Starting script bridge 1.0.8..."
+ref rLukeInit
+ref rLukeTick
+ref rLukeList
+let rLukeInit := CompileScript "LukesActorBrowser/Initialise.gek"
+let rLukeTick := CompileScript "LukesActorBrowser/Tick.gek"
+if rLukeInit && rLukeTick
+    Call rLukeInit
+    SetGameMainLoopCallback rLukeTick 1 1 11
+    Print "[Luke's Actor Browser] Script bridge initialised. Checking native renderer."
+    let rLukeList := CompileScript "LukesActorBrowser/ListPlugins.gek"
+    if rLukeList
+        Call rLukeList
+    else
+        Print "[Luke's Actor Browser] Plugin list unavailable. Installed-file browsing remains available."
+    endif
+else
+    if rLukeInit == 0
+        Print "[Luke's Actor Browser] ERROR: Initialise.gek failed to compile."
+    endif
+    if rLukeTick == 0
+        Print "[Luke's Actor Browser] ERROR: Tick.gek failed to compile."
+    endif
+endif
+
+; Optional MCM registration is handled by MCM Extender via Data\MCM JSON.
+
+ref rLukeAudio
+let rLukeAudio := CompileScript "LukesActorBrowser/Audio.gek"
+if rLukeAudio
+    SetGameMainLoopCallback rLukeAudio 1 1 11
+else
+    Print "[Luke's Actor Browser] Audio unavailable. Actor browser remains usable."
+endif
+
+
+
+
+
+
+
+ref rBrowserTheme
+let rBrowserTheme := CompileScript "LukesActorBrowser/Theme.gek"
+if rBrowserTheme
+    SetGameMainLoopCallback rBrowserTheme 1 30 11
+else
+    Print "[Actor Browser] Colour sync unavailable. Using default colour."
+endif

@@ -1,0 +1,2 @@
+Luke's Actor Browser 1.0.12
+Opening/closing shortcut changed to LB + D-pad Right. Back/View is no longer the modifier. Keyboard shortcut and control-restoration behaviour unchanged.

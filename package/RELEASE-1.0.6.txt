@@ -1,0 +1,19 @@
+Luke's Actor Browser 1.0.7 - startup font fix
+
+The 1.0.5 startup log reported "Bundled TTF font missing or invalid" even
+with both correct font files present in the MO2 mod directory. The previous
+file-based GDI font registration depended on Windows resolving a virtual
+Data path. This release reads fonts inside the game process and passes their
+bytes to AddFontMemResourceEx instead. Fonts remain private to the process.
+No system font installation or new dependency is required.
+
+Missing or rejected bundled fonts use Arial/Consolas as a fallback, with a
+message in LukesActorBrowser.log. Barlow Condensed and Share Tech Mono remain
+the normal fonts. The Show templates setting and F10 binding are unchanged.
+
+Install this archive as a replacement for the Actor Browser mod in MO2.
+Keep only one active copy of LukesActorBrowser.dll. Item Browser is unchanged.
+
+Validation: native x86 build and regression suite, including font rendering
+after removal of its source file and fallback rendering with a missing file.
+The game launch and MO2 virtual filesystem need confirmation in game.
